@@ -5,12 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CHV Dashboard - ARCH System</title>
     <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"/>
 </head>
 <body>
     <nav class="navbar">
         <div class="container">
             <div class="navbar-content glass-white">
-                <div class="navbar-brand">🏥 ARCH System</div>
+                <div class="navbar-brand"><i class="fas fa-hospital fa-lg" style="color:#1E90FF;"></i> ARCH System </div>     
                 <div class="navbar-user">
                     <div class="user-info">
                         <div class="user-name">{{ session.full_name }}</div>
@@ -25,19 +26,19 @@
     <div class="container">
         <div class="dashboard-grid">
             <div class="stat-card glass-white">
-                <div class="stat-icon">👥</div>
+                <div class="stat-icon"><i class="fas fa-users stat-icon"></i></div>
                 <div class="stat-number" id="totalPatients">0</div>
                 <div class="stat-label">Total Patients</div>
             </div>
             
             <div class="stat-card glass-white">
-                <div class="stat-icon">🩺</div>
+                <div class="stat-icon"><i class="fas fa-stethoscope stat-icon"></i></div>
                 <div class="stat-number" id="testsToday">0</div>
                 <div class="stat-label">Tests Today</div>
             </div>
             
             <div class="stat-card glass-white">
-                <div class="stat-icon">⚠️</div>
+                <div class="stat-icon"><i class="fas fa-triangle-exclamation stat-icon"></i></div>
                 <div class="stat-number" id="highRiskCount">0</div>
                 <div class="stat-label">High Risk Cases</div>
             </div>
@@ -45,21 +46,20 @@
 
         <div class="quick-actions">
             <a href="/patient-registration" class="action-btn glass-white">
-                <div class="action-icon">➕</div>
+                <div class="action-icon"><i class="fas fa-plus action-icon"></i></div>
                 <div class="action-label">Register Patient</div>
             </a>
             
             <a href="#" onclick="searchPatient()" class="action-btn glass-white">
-                <div class="action-icon">🔍</div>
+                <div class="action-icon"><i class="fas fa-magnifying-glass action-icon"></i></div>
                 <div class="action-label">Search Patient</div>
             </a>
         </div>
 
         <div class="card glass-white">
             <div class="card-header">
-                <h2 class="card-title">🚨 High-Risk Patients</h2>
+                <h2 class="card-title"><i class="fas fa-bell-on" style="color: #FF4136;"></i>High-Risk Patients </h2>
             </div>
-            
             <div id="highRiskList">
                 <div class="loading">
                     <div class="spinner"></div>
