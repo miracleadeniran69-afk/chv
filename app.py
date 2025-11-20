@@ -417,6 +417,39 @@ def get_default_advice(glucose, risk_level):
         return "✅ Good reading. Maintain diet, meds, and physical activity."
 
 # -------------------- Stats Endpoints -------------------- #
+@app.route('/api/patient/<int:patient_id>/readings')
+def get_patient_readings(patient_id):
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 401
+
+    days = request.args.get('days', 30, type=int)
+
+    with get_db_connection() as conn:
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+
+        cur.execute('''
+            SELECT gr.*, ra.risk_level, ra.risk_score, ra.ai_advice
+            FROM glucose_readings gr
+            LEFT JOIN risk_assessments ra ON ra.reading_id = gr.id
+            WHERE gr.patient_id = %s
+            AND gr.reading_time >= NOW() - INTERVAL %s
+            ORDER BY gr.reading_time DESC
+        ''', (patient_id, f'{days} days'))
+
+        readings = cur.fetchall()
+        cur.close()
+
+    return jsonify({'readings': readings})
+
+
+
+
+
+
+
+
+
+
 @app.route("/api/chv/stats")
 def chv_stats():
     if "user_id" not in session or session.get("role") != "chv":
