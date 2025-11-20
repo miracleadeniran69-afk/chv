@@ -9,6 +9,8 @@ import secrets
 import json
 from contextlib import contextmanager
 
+
+init_db()
 app = Flask(__name__)
 app.secret_key = os.environ.get('SESSION_SECRET', secrets.token_hex(32))
 CORS(app)
@@ -559,5 +561,5 @@ def admin_stats():
     })
 
 if __name__ == '__main__':
-    init_db()
+    #init_db()
     app.run(host='0.0.0.0', port=5000, debug=True)
