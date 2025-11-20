@@ -419,27 +419,34 @@ def get_default_advice(glucose, risk_level):
 # -------------------- Stats Endpoints -------------------- #
 @app.route('/api/patient/<int:patient_id>/readings')
 def get_patient_readings(patient_id):
+    # Check if user is logged in
     if 'user_id' not in session:
         return jsonify({'success': False, 'message': 'Unauthorized'}), 401
 
+    # Get 'days' parameter from query string, default 30
     days = request.args.get('days', 30, type=int)
 
-    with get_db_connection() as conn:
-        cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        # Use psycopg v3 with dict_row for dict-like rows
+        with psycopg.connect(DATABASE_URL, row_factory=psycopg.rows.dict_row) as conn:
+            with conn.cursor() as cur:
+                cur.execute('''
+                    SELECT gr.*, ra.risk_level, ra.risk_score, ra.ai_advice
+                    FROM glucose_readings gr
+                    LEFT JOIN risk_assessments ra ON ra.reading_id = gr.id
+                    WHERE gr.patient_id = %s
+                      AND gr.reading_time >= NOW() - %s * INTERVAL '1 day'
+                    ORDER BY gr.reading_time DESC
+                ''', (patient_id, days))
 
-        cur.execute('''
-            SELECT gr.*, ra.risk_level, ra.risk_score, ra.ai_advice
-            FROM glucose_readings gr
-            LEFT JOIN risk_assessments ra ON ra.reading_id = gr.id
-            WHERE gr.patient_id = %s
-            AND gr.reading_time >= NOW() - INTERVAL %s
-            ORDER BY gr.reading_time DESC
-        ''', (patient_id, f'{days} days'))
+                readings = cur.fetchall()
 
-        readings = cur.fetchall()
-        cur.close()
+        return jsonify({'success': True, 'readings': readings})
 
-    return jsonify({'readings': readings})
+    except Exception as e:
+        # Catch errors and return JSON
+        return jsonify({'success': False, 'message': str(e)}), 500
+
 
 
 
