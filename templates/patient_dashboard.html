@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Patient Dashboard - ARCH System</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <div class="navbar-content glass-white">
+                <div class="navbar-brand">🏥 ARCH System</div>
+                <div class="navbar-user">
+                    <a href="/chv-dashboard" class="back-btn">← Back to Dashboard</a>
+                    <a href="/logout" class="btn btn-secondary">Logout</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="card glass-white">
+            <div class="card-header">
+                <div>
+                    <h2 class="card-title" id="patientName">Patient Dashboard</h2>
+                    <div id="patientDetails" style="color: var(--text-light); font-size: 0.95rem; margin-top: 8px;"></div>
+                </div>
+                <a href="/glucose-input/{{ patient_id }}" class="btn btn-primary">➕ New Reading</a>
+            </div>
+        </div>
+        
+        <div class="dashboard-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+            <div class="stat-card glass-white">
+                <div class="stat-label">Latest Glucose</div>
+                <div class="stat-number" id="latestGlucose" style="font-size: 2rem;">-</div>
+                <small style="color: var(--text-light);">mg/dL</small>
+            </div>
+            
+            <div class="stat-card glass-white">
+                <div class="stat-label">7-Day Average</div>
+                <div class="stat-number" id="avgGlucose" style="font-size: 2rem;">-</div>
+                <small style="color: var(--text-light);">mg/dL</small>
+            </div>
+            
+            <div class="stat-card glass-white">
+                <div class="stat-label">Risk Level</div>
+                <div id="riskBadge" style="margin-top: 10px;">-</div>
+            </div>
+            
+            <div class="stat-card glass-white">
+                <div class="stat-label">Total Readings</div>
+                <div class="stat-number" id="totalReadings" style="font-size: 2rem;">0</div>
+            </div>
+        </div>
+
+        <div class="card glass-white">
+            <div class="card-header">
+                <h3 class="card-title">📊 Glucose Trend</h3>
+                <div class="btn-group">
+                    <button onclick="loadChart(7)" class="btn btn-secondary" style="padding: 8px 16px;">7 Days</button>
+                    <button onclick="loadChart(14)" class="btn btn-secondary" style="padding: 8px 16px;">14 Days</button>
+                    <button onclick="loadChart(30)" class="btn btn-primary" style="padding: 8px 16px;">30 Days</button>
+                </div>
+            </div>
+            <div class="chart-container">
+                <canvas id="glucoseChart"></canvas>
+            </div>
+        </div>
+
+        <div class="card glass-white">
+            <div class="card-header">
+                <h3 class="card-title">📋 Reading History</h3>
+            </div>
+            <div id="readingHistory">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>Loading readings...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const patientId = {{ patient_id }};
+        let chartInstance = null;
+        let currentDays = 30;
+        
+        async function loadPatientData() {
+            try {
+                const response = await fetch(`/api/patient/${patientId}`);
+                const data = await response.json();
+                
+                if (data.patient) {
+                    const p = data.patient;
+                    document.getElementById('patientName').textContent = p.full_name;
+                    document.getElementById('patientDetails').innerHTML = `
+                        ID: ${p.patient_id} | ${p.age} years, ${p.gender} | 
+                        ${p.village}, ${p.district} | ${p.diabetes_type} | 
+                        Phone: ${p.phone || 'N/A'}
+                    `;
+                }
+            } catch (error) {
+                console.error('Error loading patient data:', error);
+            }
+        }
+        
+        async function loadReadings(days = 30) {
+            currentDays = days;
+            
+            try {
+                const response = await fetch(`/api/patient/${patientId}/readings?days=${days}`);
+                const data = await response.json();
+                
+                if (data.readings && data.readings.length > 0) {
+                    const readings = data.readings;
+                    
+                    document.getElementById('latestGlucose').textContent = readings[0].glucose_level.toFixed(1);
+                    document.getElementById('totalReadings').textContent = readings.length;
+                    
+                    const avg = readings.reduce((sum, r) => sum + r.glucose_level, 0) / readings.length;
+                    document.getElementById('avgGlucose').textContent = avg.toFixed(1);
+                    
+                    const latestRisk = readings[0].risk_level || 'Low';
+                    document.getElementById('riskBadge').innerHTML = `<span class="badge badge-${latestRisk.toLowerCase()}">${latestRisk}</span>`;
+                    
+                    displayReadingHistory(readings);
+                    updateChart(readings);
+                } else {
+                    document.getElementById('readingHistory').innerHTML = '<p style="text-align: center; padding: 40px; color: var(--text-light);">No readings yet. Record the first glucose reading!</p>';
+                }
+            } catch (error) {
+                console.error('Error loading readings:', error);
+            }
+        }
+        
+        function displayReadingHistory(readings) {
+            const historyDiv = document.getElementById('readingHistory');
+            
+            historyDiv.innerHTML = `
+                <div class="timeline">
+                    ${readings.slice(0, 10).map(r => `
+                        <div class="timeline-item">
+                            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 10px;">
+                                <div>
+                                    <strong style="font-size: 1.1rem; color: var(--primary-color);">${r.glucose_level} mg/dL</strong>
+                                    <span class="badge badge-${(r.risk_level || 'Low').toLowerCase()}" style="margin-left: 10px;">${r.risk_level || 'Low'}</span>
+                                </div>
+                                <small style="color: var(--text-light);">${new Date(r.reading_time).toLocaleString()}</small>
+                            </div>
+                            
+                            ${r.ai_advice ? `
+                                <div style="background: rgba(74, 144, 226, 0.05); padding: 12px; border-radius: 8px; margin-top: 10px;">
+                                    <strong>AI Advice:</strong>
+                                    <p style="margin-top: 5px; color: var(--text-dark); font-size: 0.9rem;">${r.ai_advice.substring(0, 200)}${r.ai_advice.length > 200 ? '...' : ''}</p>
+                                </div>
+                            ` : ''}
+                            
+                            <div style="margin-top: 8px; font-size: 0.85rem; color: var(--text-light);">
+                                ${r.medication_taken ? '✅ Medication taken' : '❌ Medication not taken'} |
+                                Stress: ${r.stress_level || 'N/A'} |
+                                ${r.symptoms ? `Symptoms: ${r.symptoms}` : 'No symptoms'}
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+                
+                ${readings.length > 10 ? `<p style="text-align: center; margin-top: 20px; color: var(--text-light);">Showing 10 most recent readings of ${readings.length} total</p>` : ''}
+            `;
+        }
+        
+        function updateChart(readings) {
+            const ctx = document.getElementById('glucoseChart').getContext('2d');
+            
+            const reversedReadings = [...readings].reverse();
+            const labels = reversedReadings.map(r => new Date(r.reading_time).toLocaleDateString());
+            const glucoseData = reversedReadings.map(r => r.glucose_level);
+            
+            if (chartInstance) {
+                chartInstance.destroy();
+            }
+            
+            chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Glucose Level (mg/dL)',
+                        data: glucoseData,
+                        borderColor: '#4A90E2',
+                        backgroundColor: 'rgba(74, 144, 226, 0.1)',
+                        tension: 0.4,
+                        fill: true,
+                        pointRadius: 5,
+                        pointHoverRadius: 7,
+                        pointBackgroundColor: glucoseData.map(g => {
+                            if (g < 70) return '#F5222D';
+                            if (g > 180) return '#FAAD14';
+                            return '#52C41A';
+                        })
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                            titleColor: '#2C3E50',
+                            bodyColor: '#2C3E50',
+                            borderColor: '#4A90E2',
+                            borderWidth: 1,
+                            padding: 12,
+                            displayColors: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            min: 50,
+                            max: Math.max(300, Math.max(...glucoseData) + 50),
+                            grid: {
+                                color: 'rgba(74, 144, 226, 0.1)'
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return value + ' mg/dL';
+                                }
+                            }
+                        },
+                        x: {
+                            grid: {
+                                color: 'rgba(74, 144, 226, 0.1)'
+                            }
+                        }
+                    },
+                    annotation: {
+                        annotations: {
+                            line1: {
+                                type: 'line',
+                                yMin: 70,
+                                yMax: 70,
+                                borderColor: '#F5222D',
+                                borderWidth: 2,
+                                borderDash: [5, 5],
+                                label: {
+                                    content: 'Low (70)',
+                                    enabled: true
+                                }
+                            },
+                            line2: {
+                                type: 'line',
+                                yMin: 180,
+                                yMax: 180,
+                                borderColor: '#FAAD14',
+                                borderWidth: 2,
+                                borderDash: [5, 5],
+                                label: {
+                                    content: 'High (180)',
+                                    enabled: true
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        function loadChart(days) {
+            loadReadings(days);
+        }
+        
+        loadPatientData();
+        loadReadings(30);
+    </script>
+</body>
+</html>

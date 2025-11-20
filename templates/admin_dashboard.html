@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - ARCH System</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <div class="navbar-content glass-white">
+                <div class="navbar-brand">🏥 ARCH System - Admin</div>
+                <div class="navbar-user">
+                    <div class="user-info">
+                        <div class="user-name">{{ session.full_name }}</div>
+                        <div class="user-role">System Administrator</div>
+                    </div>
+                    <a href="/logout" class="btn btn-secondary">Logout</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="dashboard-grid">
+            <div class="stat-card glass-white">
+                <div class="stat-icon">👥</div>
+                <div class="stat-number" id="totalPatients">0</div>
+                <div class="stat-label">Total Patients</div>
+            </div>
+            
+            <div class="stat-card glass-white">
+                <div class="stat-icon">🏥</div>
+                <div class="stat-number" id="totalCHVs">0</div>
+                <div class="stat-label">Active CHVs</div>
+            </div>
+            
+            <div class="stat-card glass-white">
+                <div class="stat-icon">📊</div>
+                <div class="stat-number" id="totalReadings">0</div>
+                <div class="stat-label">Readings (30 days)</div>
+            </div>
+            
+            <div class="stat-card glass-white">
+                <div class="stat-icon">🚨</div>
+                <div class="stat-number" id="activeAlerts">0</div>
+                <div class="stat-label">Active Alerts</div>
+            </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(500px, 1fr)); gap: 25px;">
+            <div class="card glass-white">
+                <div class="card-header">
+                    <h3 class="card-title">📈 Risk Distribution (30 days)</h3>
+                </div>
+                <div class="chart-container" style="height: 300px;">
+                    <canvas id="riskChart"></canvas>
+                </div>
+            </div>
+            
+            <div class="card glass-white">
+                <div class="card-header">
+                    <h3 class="card-title">👨‍⚕️ CHV Performance</h3>
+                </div>
+                <div id="chvPerformance">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        <p>Loading data...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card glass-white">
+            <div class="card-header">
+                <h3 class="card-title">📋 CHV Overview</h3>
+            </div>
+            <div id="chvTable"></div>
+        </div>
+    </div>
+
+    <script>
+        let riskChartInstance = null;
+        
+        async function loadAdminStats() {
+            try {
+                const response = await fetch('/api/admin/stats');
+                const data = await response.json();
+                
+                document.getElementById('totalPatients').textContent = data.total_patients || 0;
+                document.getElementById('totalCHVs').textContent = data.total_chvs || 0;
+                document.getElementById('totalReadings').textContent = data.total_readings || 0;
+                document.getElementById('activeAlerts').textContent = data.active_alerts || 0;
+                
+                displayCHVPerformance(data.chv_performance);
+                displayRiskChart(data.risk_distribution);
+            } catch (error) {
+                console.error('Error loading admin stats:', error);
+            }
+        }
+        
+        function displayCHVPerformance(performance) {
+            const perfDiv = document.getElementById('chvPerformance');
+            
+            if (performance && performance.length > 0) {
+                perfDiv.innerHTML = `
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>CHV Name</th>
+                                <th>District</th>
+                                <th>Patients</th>
+                                <th>Readings</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${performance.slice(0, 5).map(chv => `
+                                <tr>
+                                    <td>${chv.full_name}</td>
+                                    <td>${chv.district || 'N/A'}</td>
+                                    <td>${chv.patient_count || 0}</td>
+                                    <td>${chv.reading_count || 0}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                `;
+                
+                const tableDiv = document.getElementById('chvTable');
+                tableDiv.innerHTML = `
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>CHV Name</th>
+                                <th>District</th>
+                                <th>Patients Managed</th>
+                                <th>Total Readings</th>
+                                <th>Performance</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${performance.map(chv => {
+                                const avgReadings = chv.patient_count > 0 ? (chv.reading_count / chv.patient_count).toFixed(1) : 0;
+                                let performanceBadge = 'badge-success';
+                                let performanceText = 'Excellent';
+                                
+                                if (avgReadings < 2) {
+                                    performanceBadge = 'badge-danger';
+                                    performanceText = 'Needs Improvement';
+                                } else if (avgReadings < 5) {
+                                    performanceBadge = 'badge-warning';
+                                    performanceText = 'Good';
+                                }
+                                
+                                return `
+                                    <tr>
+                                        <td>${chv.full_name}</td>
+                                        <td>${chv.district || 'N/A'}</td>
+                                        <td>${chv.patient_count || 0}</td>
+                                        <td>${chv.reading_count || 0}</td>
+                                        <td><span class="badge ${performanceBadge}">${performanceText}</span></td>
+                                    </tr>
+                                `;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                `;
+            } else {
+                perfDiv.innerHTML = '<p style="text-align: center; padding: 20px; color: var(--text-light);">No CHV data available</p>';
+            }
+        }
+        
+        function displayRiskChart(riskDistribution) {
+            const ctx = document.getElementById('riskChart').getContext('2d');
+            
+            const riskMap = { Low: 0, Medium: 0, High: 0 };
+            
+            if (riskDistribution && riskDistribution.length > 0) {
+                riskDistribution.forEach(item => {
+                    riskMap[item.risk_level] = item.count;
+                });
+            }
+            
+            if (riskChartInstance) {
+                riskChartInstance.destroy();
+            }
+            
+            riskChartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Low Risk', 'Medium Risk', 'High Risk'],
+                    datasets: [{
+                        data: [riskMap.Low, riskMap.Medium, riskMap.High],
+                        backgroundColor: [
+                            'rgba(82, 196, 26, 0.8)',
+                            'rgba(250, 173, 20, 0.8)',
+                            'rgba(245, 34, 45, 0.8)'
+                        ],
+                        borderColor: [
+                            '#52C41A',
+                            '#FAAD14',
+                            '#F5222D'
+                        ],
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                padding: 15,
+                                font: {
+                                    size: 12
+                                }
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                            titleColor: '#2C3E50',
+                            bodyColor: '#2C3E50',
+                            borderColor: '#4A90E2',
+                            borderWidth: 1,
+                            padding: 12
+                        }
+                    }
+                }
+            });
+        }
+        
+        loadAdminStats();
+    </script>
+</body>
+</html>

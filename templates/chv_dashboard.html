@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CHV Dashboard - ARCH System</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <div class="navbar-content glass-white">
+                <div class="navbar-brand">🏥 ARCH System</div>
+                <div class="navbar-user">
+                    <div class="user-info">
+                        <div class="user-name">{{ session.full_name }}</div>
+                        <div class="user-role">Community Health Volunteer</div>
+                    </div>
+                    <a href="/logout" class="btn btn-secondary">Logout</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="dashboard-grid">
+            <div class="stat-card glass-white">
+                <div class="stat-icon">👥</div>
+                <div class="stat-number" id="totalPatients">0</div>
+                <div class="stat-label">Total Patients</div>
+            </div>
+            
+            <div class="stat-card glass-white">
+                <div class="stat-icon">🩺</div>
+                <div class="stat-number" id="testsToday">0</div>
+                <div class="stat-label">Tests Today</div>
+            </div>
+            
+            <div class="stat-card glass-white">
+                <div class="stat-icon">⚠️</div>
+                <div class="stat-number" id="highRiskCount">0</div>
+                <div class="stat-label">High Risk Cases</div>
+            </div>
+        </div>
+
+        <div class="quick-actions">
+            <a href="/patient-registration" class="action-btn glass-white">
+                <div class="action-icon">➕</div>
+                <div class="action-label">Register Patient</div>
+            </a>
+            
+            <a href="#" onclick="searchPatient()" class="action-btn glass-white">
+                <div class="action-icon">🔍</div>
+                <div class="action-label">Search Patient</div>
+            </a>
+        </div>
+
+        <div class="card glass-white">
+            <div class="card-header">
+                <h2 class="card-title">🚨 High-Risk Patients</h2>
+            </div>
+            
+            <div id="highRiskList">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>Loading patient data...</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="searchModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; padding: 20px;">
+            <div class="container" style="max-width: 800px; margin-top: 50px;">
+                <div class="card glass-white">
+                    <div class="card-header">
+                        <h2 class="card-title">Search Patient</h2>
+                        <button onclick="closeSearch()" class="btn btn-secondary">Close</button>
+                    </div>
+                    
+                    <div class="search-box">
+                        <input type="text" id="searchInput" class="form-control" placeholder="Search by name or patient ID...">
+                        <button onclick="performSearch()" class="btn btn-primary">Search</button>
+                    </div>
+                    
+                    <div id="searchResults" class="patient-list"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function loadStats() {
+            try {
+                const response = await fetch('/api/chv/stats');
+                const data = await response.json();
+                
+                document.getElementById('totalPatients').textContent = data.total_patients;
+                document.getElementById('testsToday').textContent = data.tests_today;
+                document.getElementById('highRiskCount').textContent = data.high_risk_count;
+                
+                const highRiskList = document.getElementById('highRiskList');
+                
+                if (data.high_risk_patients && data.high_risk_patients.length > 0) {
+                    highRiskList.innerHTML = `
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Patient ID</th>
+                                    <th>Name</th>
+                                    <th>Village</th>
+                                    <th>Glucose Level</th>
+                                    <th>Risk</th>
+                                    <th>Date</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${data.high_risk_patients.map(p => `
+                                    <tr>
+                                        <td>${p.patient_id}</td>
+                                        <td>${p.full_name}</td>
+                                        <td>${p.village}</td>
+                                        <td>${p.glucose_level} mg/dL</td>
+                                        <td><span class="badge badge-high">${p.risk_level}</span></td>
+                                        <td>${new Date(p.reading_time).toLocaleDateString()}</td>
+                                        <td>
+                                            <a href="/patient-dashboard/${p.id}" class="btn btn-primary" style="padding: 8px 16px; font-size: 0.9rem;">View</a>
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    `;
+                } else {
+                    highRiskList.innerHTML = '<p style="text-align: center; padding: 40px; color: var(--text-light);">No high-risk patients at this time. Great job! 🎉</p>';
+                }
+            } catch (error) {
+                console.error('Error loading stats:', error);
+            }
+        }
+        
+        function searchPatient() {
+            document.getElementById('searchModal').style.display = 'block';
+            document.getElementById('searchInput').focus();
+        }
+        
+        function closeSearch() {
+            document.getElementById('searchModal').style.display = 'none';
+            document.getElementById('searchResults').innerHTML = '';
+            document.getElementById('searchInput').value = '';
+        }
+        
+        async function performSearch() {
+            const query = document.getElementById('searchInput').value;
+            if (!query) return;
+            
+            try {
+                const response = await fetch(`/api/search-patients?q=${encodeURIComponent(query)}`);
+                const data = await response.json();
+                
+                const resultsDiv = document.getElementById('searchResults');
+                
+                if (data.patients && data.patients.length > 0) {
+                    resultsDiv.innerHTML = data.patients.map(p => `
+                        <div class="patient-item glass" onclick="window.location.href='/patient-dashboard/${p.id}'">
+                            <div class="patient-name">${p.full_name}</div>
+                            <div class="patient-details">
+                                ID: ${p.patient_id} | ${p.age} years, ${p.gender} | ${p.village} | ${p.phone || 'No phone'}
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    resultsDiv.innerHTML = '<p style="text-align: center; padding: 20px; color: var(--text-light);">No patients found</p>';
+                }
+            } catch (error) {
+                console.error('Error searching:', error);
+            }
+        }
+        
+        document.getElementById('searchInput').addEventListener('keyup', (e) => {
+            if (e.key === 'Enter') {
+                performSearch();
+            }
+        });
+        
+        loadStats();
+    </script>
+</body>
+</html>

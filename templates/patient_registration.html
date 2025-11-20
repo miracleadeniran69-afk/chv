@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Patient Registration - ARCH System</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <div class="navbar-content glass-white">
+                <div class="navbar-brand">🏥 ARCH System</div>
+                <div class="navbar-user">
+                    <a href="/chv-dashboard" class="back-btn">← Back to Dashboard</a>
+                    <a href="/logout" class="btn btn-secondary">Logout</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="card glass-white">
+            <div class="card-header">
+                <h2 class="card-title">➕ Register New Patient</h2>
+            </div>
+            
+            <form id="registrationForm" class="reading-form">
+                <div class="form-group">
+                    <label for="fullName">Full Name *</label>
+                    <input type="text" id="fullName" class="form-control" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="age">Age *</label>
+                    <input type="number" id="age" class="form-control" required min="1" max="120">
+                </div>
+                
+                <div class="form-group">
+                    <label for="gender">Gender *</label>
+                    <select id="gender" class="form-control" required>
+                        <option value="">Select gender</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="village">Village *</label>
+                    <input type="text" id="village" class="form-control" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="district">District *</label>
+                    <input type="text" id="district" class="form-control" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="phone">Phone Number</label>
+                    <input type="tel" id="phone" class="form-control">
+                </div>
+                
+                <div class="form-group">
+                    <label for="emergencyContact">Emergency Contact</label>
+                    <input type="tel" id="emergencyContact" class="form-control">
+                </div>
+                
+                <div class="form-group">
+                    <label for="diabetesType">Diabetes Type *</label>
+                    <select id="diabetesType" class="form-control" required>
+                        <option value="">Select type</option>
+                        <option value="Type 1">Type 1</option>
+                        <option value="Type 2">Type 2</option>
+                        <option value="Gestational">Gestational</option>
+                        <option value="Unknown">Unknown</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="diagnosisDate">Diagnosis Date</label>
+                    <input type="date" id="diagnosisDate" class="form-control">
+                </div>
+            </form>
+            
+            <div id="successMessage" class="alert alert-success" style="display: none;"></div>
+            <div id="errorMessage" class="alert alert-danger" style="display: none;"></div>
+            
+            <div class="btn-group" style="margin-top: 20px;">
+                <button onclick="registerPatient()" class="btn btn-primary">Register Patient</button>
+                <a href="/chv-dashboard" class="btn btn-secondary">Cancel</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function registerPatient() {
+            const form = document.getElementById('registrationForm');
+            if (!form.checkValidity()) {
+                form.reportValidity();
+                return;
+            }
+            
+            const data = {
+                full_name: document.getElementById('fullName').value,
+                age: parseInt(document.getElementById('age').value),
+                gender: document.getElementById('gender').value,
+                village: document.getElementById('village').value,
+                district: document.getElementById('district').value,
+                phone: document.getElementById('phone').value,
+                emergency_contact: document.getElementById('emergencyContact').value,
+                diabetes_type: document.getElementById('diabetesType').value,
+                diagnosis_date: document.getElementById('diagnosisDate').value || null
+            };
+            
+            try {
+                const response = await fetch('/api/register-patient', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    document.getElementById('successMessage').textContent = `Patient registered successfully! ID: ${result.patient.patient_id}`;
+                    document.getElementById('successMessage').style.display = 'block';
+                    document.getElementById('errorMessage').style.display = 'none';
+                    
+                    setTimeout(() => {
+                        window.location.href = `/glucose-input/${result.patient.id}`;
+                    }, 2000);
+                } else {
+                    document.getElementById('errorMessage').textContent = result.message || 'Registration failed';
+                    document.getElementById('errorMessage').style.display = 'block';
+                    document.getElementById('successMessage').style.display = 'none';
+                }
+            } catch (error) {
+                document.getElementById('errorMessage').textContent = 'Connection error. Please try again.';
+                document.getElementById('errorMessage').style.display = 'block';
+                document.getElementById('successMessage').style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>

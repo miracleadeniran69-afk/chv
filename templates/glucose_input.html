@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Glucose Reading - ARCH System</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <div class="navbar-content glass-white">
+                <div class="navbar-brand">🏥 ARCH System</div>
+                <div class="navbar-user">
+                    <a href="/chv-dashboard" class="back-btn">← Back to Dashboard</a>
+                    <a href="/logout" class="btn btn-secondary">Logout</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="card glass-white">
+            <div class="card-header">
+                <h2 class="card-title">🩺 Record Glucose Reading</h2>
+                <div id="patientInfo" style="font-size: 0.9rem; color: var(--text-light);"></div>
+            </div>
+            
+            <form id="readingForm" class="reading-form">
+                <div class="form-group">
+                    <label for="glucoseLevel">Blood Glucose Level (mg/dL) *</label>
+                    <input type="number" id="glucoseLevel" class="form-control" required min="20" max="600" step="0.1">
+                    <small style="color: var(--text-light);">Normal range: 70-130 mg/dL (fasting)</small>
+                </div>
+                
+                <div class="form-group">
+                    <label class="checkbox-group">
+                        <input type="checkbox" id="medicationTaken">
+                        <span>Medication taken as prescribed today</span>
+                    </label>
+                </div>
+                
+                <div class="form-group">
+                    <label for="dietDescription">What did the patient eat today?</label>
+                    <textarea id="dietDescription" class="form-control" placeholder="e.g., fufu, rice, beans, vegetables..."></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="stressLevel">Stress Level</label>
+                    <select id="stressLevel" class="form-control">
+                        <option value="None">None</option>
+                        <option value="Low">Low</option>
+                        <option value="Medium">Medium</option>
+                        <option value="High">High</option>
+                        <option value="Very High">Very High</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="foodAvailability">Food Availability</label>
+                    <select id="foodAvailability" class="form-control">
+                        <option value="Good">Good - enough food available</option>
+                        <option value="Moderate">Moderate - limited food</option>
+                        <option value="Poor">Poor - food shortage</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="symptoms">Current Symptoms</label>
+                    <textarea id="symptoms" class="form-control" placeholder="e.g., dizziness, thirst, frequent urination, fatigue..."></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="notes">Additional Notes</label>
+                    <textarea id="notes" class="form-control" placeholder="Any other observations..."></textarea>
+                </div>
+            </form>
+            
+            <div class="btn-group" style="margin-top: 20px;">
+                <button onclick="submitReading()" class="btn btn-primary">Submit Reading & Get AI Analysis</button>
+                <a href="/chv-dashboard" class="btn btn-secondary">Cancel</a>
+            </div>
+        </div>
+        
+        <div id="riskAssessment" style="display: none;"></div>
+    </div>
+
+    <script>
+        const patientId = {{ patient_id }};
+        
+        async function loadPatientInfo() {
+            try {
+                const response = await fetch(`/api/patient/${patientId}`);
+                const data = await response.json();
+                
+                if (data.patient) {
+                    document.getElementById('patientInfo').innerHTML = `
+                        Patient: <strong>${data.patient.full_name}</strong> | 
+                        ID: ${data.patient.patient_id} | 
+                        Age: ${data.patient.age} | 
+                        Village: ${data.patient.village}
+                    `;
+                }
+            } catch (error) {
+                console.error('Error loading patient info:', error);
+            }
+        }
+        
+        async function submitReading() {
+            const form = document.getElementById('readingForm');
+            if (!form.checkValidity()) {
+                form.reportValidity();
+                return;
+            }
+            
+            const data = {
+                patient_id: patientId,
+                glucose_level: parseFloat(document.getElementById('glucoseLevel').value),
+                medication_taken: document.getElementById('medicationTaken').checked,
+                diet_description: document.getElementById('dietDescription').value,
+                stress_level: document.getElementById('stressLevel').value,
+                food_availability: document.getElementById('foodAvailability').value,
+                symptoms: document.getElementById('symptoms').value,
+                notes: document.getElementById('notes').value
+            };
+            
+            try {
+                const response = await fetch('/api/glucose-reading', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    displayRiskAssessment(result.risk_assessment);
+                } else {
+                    alert('Error submitting reading. Please try again.');
+                }
+            } catch (error) {
+                alert('Connection error. Please try again.');
+            }
+        }
+        
+        function displayRiskAssessment(assessment) {
+            const riskDiv = document.getElementById('riskAssessment');
+            
+            let riskClass = 'alert-success';
+            let riskIcon = '✅';
+            if (assessment.risk_level === 'High') {
+                riskClass = 'alert-danger';
+                riskIcon = '🚨';
+            } else if (assessment.risk_level === 'Medium') {
+                riskClass = 'alert-warning';
+                riskIcon = '⚠️';
+            }
+            
+            riskDiv.innerHTML = `
+                <div class="card glass-white risk-assessment">
+                    <h3>${riskIcon} Risk Assessment: <span class="badge badge-${assessment.risk_level.toLowerCase()}">${assessment.risk_level} Risk</span></h3>
+                    
+                    ${assessment.warnings && assessment.warnings.length > 0 ? `
+                        <div class="alert ${riskClass}">
+                            <strong>Warnings:</strong>
+                            <ul style="margin: 10px 0 0 20px;">
+                                ${assessment.warnings.map(w => `<li>${w}</li>`).join('')}
+                            </ul>
+                        </div>
+                    ` : ''}
+                    
+                    <div class="advice-box">
+                        <strong>🤖 AI-Powered Personalized Advice:</strong>
+                        <p style="margin-top: 10px; white-space: pre-line;">${assessment.advice}</p>
+                    </div>
+                    
+                    ${assessment.referral_needed ? `
+                        <div class="alert alert-danger" style="margin-top: 15px;">
+                            <strong>⚕️ Referral Recommended:</strong> This patient should be referred to a clinic for further evaluation.
+                        </div>
+                    ` : ''}
+                    
+                    <div class="btn-group" style="margin-top: 20px;">
+                        <a href="/patient-dashboard/${patientId}" class="btn btn-primary">View Patient Dashboard</a>
+                        <a href="/glucose-input/${patientId}" class="btn btn-secondary">Record Another Reading</a>
+                        <a href="/chv-dashboard" class="btn btn-secondary">Back to Dashboard</a>
+                    </div>
+                </div>
+            `;
+            
+            riskDiv.style.display = 'block';
+            riskDiv.scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        loadPatientInfo();
+    </script>
+</body>
+</html>
