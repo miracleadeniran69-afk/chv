@@ -6,12 +6,13 @@
     <title>Admin Dashboard - ARCH System</title>
     <link rel="stylesheet" href="/static/css/style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"/>
 </head>
 <body>
     <nav class="navbar">
         <div class="container">
             <div class="navbar-content glass-white">
-                <div class="navbar-brand">🏥 ARCH System - Admin</div>
+                <div class="navbar-brand"> ARCH System - Admin</div>
                 <div class="navbar-user">
                     <div class="user-info">
                         <div class="user-name">{{ session.full_name }}</div>
@@ -26,25 +27,25 @@
     <div class="container">
         <div class="dashboard-grid">
             <div class="stat-card glass-white">
-                <div class="stat-icon">👥</div>
+                <div class="stat-icon"><i class="fas fa-users stat-icon"></i></div>
                 <div class="stat-number" id="totalPatients">0</div>
                 <div class="stat-label">Total Patients</div>
             </div>
             
             <div class="stat-card glass-white">
-                <div class="stat-icon">🏥</div>
+                <div class="stat-icon"><i class="fas fa-hospital" style="color: #FF4136;"></i></div>
                 <div class="stat-number" id="totalCHVs">0</div>
                 <div class="stat-label">Active CHVs</div>
             </div>
             
             <div class="stat-card glass-white">
-                <div class="stat-icon">📊</div>
+                <div class="stat-icon"><i class="fas fa-chart-bar" style="color: #0074D9;"></i></div>
                 <div class="stat-number" id="totalReadings">0</div>
                 <div class="stat-label">Readings (30 days)</div>
             </div>
             
             <div class="stat-card glass-white">
-                <div class="stat-icon">🚨</div>
+                <div class="stat-icon"><i class="fas fa-bell-on" style="color: #FF4136;"></i></div>
                 <div class="stat-number" id="activeAlerts">0</div>
                 <div class="stat-label">Active Alerts</div>
             </div>
@@ -53,7 +54,7 @@
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(500px, 1fr)); gap: 25px;">
             <div class="card glass-white">
                 <div class="card-header">
-                    <h3 class="card-title">📈 Risk Distribution (30 days)</h3>
+                    <h3 class="card-title"><i class="fas fa-chart-line" style="color: #2ECC40;"></i> Risk Distribution (30 days)</h3>
                 </div>
                 <div class="chart-container" style="height: 300px;">
                     <canvas id="riskChart"></canvas>
@@ -62,7 +63,7 @@
             
             <div class="card glass-white">
                 <div class="card-header">
-                    <h3 class="card-title">👨‍⚕️ CHV Performance</h3>
+                    <h3 class="card-title"><i class="fas fa-user-md" style="color: #007BFF;"></i> CHV Performance</h3>
                 </div>
                 <div id="chvPerformance">
                     <div class="loading">
@@ -75,7 +76,7 @@
 
         <div class="card glass-white">
             <div class="card-header">
-                <h3 class="card-title">📋 CHV Overview</h3>
+                <h3 class="card-title"><i class="fas fa-clipboard-list" style="color: #28a745;"></i> CHV Overview</h3>
             </div>
             <div id="chvTable"></div>
         </div>
