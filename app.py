@@ -10,7 +10,7 @@ import json
 from contextlib import contextmanager
 
 
-init_db()
+
 app = Flask(__name__)
 app.secret_key = os.environ.get("SESSION_SECRET", secrets.token_hex(32))
 CORS(app)
@@ -501,7 +501,7 @@ def admin_stats():
     })
 
 # -------------------- Initialize DB -------------------- #
-
+init_db()
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)
