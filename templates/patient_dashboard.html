@@ -6,12 +6,13 @@
     <title>Patient Dashboard - ARCH System</title>
     <link rel="stylesheet" href="/static/css/style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"/>
 </head>
 <body>
     <nav class="navbar">
         <div class="container">
             <div class="navbar-content glass-white">
-                <div class="navbar-brand">🏥 ARCH System</div>
+                <div class="navbar-brand"> ARCH System</div>
                 <div class="navbar-user">
                     <a href="/chv-dashboard" class="back-btn">← Back to Dashboard</a>
                     <a href="/logout" class="btn btn-secondary">Logout</a>
@@ -27,7 +28,7 @@
                     <h2 class="card-title" id="patientName">Patient Dashboard</h2>
                     <div id="patientDetails" style="color: var(--text-light); font-size: 0.95rem; margin-top: 8px;"></div>
                 </div>
-                <a href="/glucose-input/{{ patient_id }}" class="btn btn-primary">➕ New Reading</a>
+                <a href="/glucose-input/{{ patient_id }}" class="btn btn-primary"><i class="fas fa-plus action-icon"></i> New Reading</a>
             </div>
         </div>
         
@@ -57,7 +58,7 @@
 
         <div class="card glass-white">
             <div class="card-header">
-                <h3 class="card-title">📊 Glucose Trend</h3>
+                <h3 class="card-title"><i class="fas fa-chart-bar" style="color: #0074D9;"></i> Glucose Trend</h3>
                 <div class="btn-group">
                     <button onclick="loadChart(7)" class="btn btn-secondary" style="padding: 8px 16px;">7 Days</button>
                     <button onclick="loadChart(14)" class="btn btn-secondary" style="padding: 8px 16px;">14 Days</button>
@@ -71,7 +72,7 @@
 
         <div class="card glass-white">
             <div class="card-header">
-                <h3 class="card-title">📋 Reading History</h3>
+                <h3 class="card-title"><i class="fas fa-clipboard-list" style="color: #28a745;"></i> Reading History</h3>
             </div>
             <div id="readingHistory">
                 <div class="loading">
